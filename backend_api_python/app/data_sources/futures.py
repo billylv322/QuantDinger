@@ -11,6 +11,7 @@ import requests
 import yfinance as yf
 
 from app.data_sources.base import BaseDataSource, TIMEFRAME_SECONDS
+from app.data_sources.cn_futures import CnFuturesDataSource, is_cn_futures_symbol
 from app.data_sources.native_crypto import create_native_crypto_client
 from app.utils.logger import get_logger
 from app.config import CryptoPublicConfig, TiingoConfig, APIKeys
@@ -96,6 +97,7 @@ class FuturesDataSource(BaseDataSource):
             timeout_ms=CryptoPublicConfig.TIMEOUT,
             proxy=CryptoPublicConfig.PROXY,
         )
+        self._cn_futures = CnFuturesDataSource()
 
     def get_ticker(self, symbol: str) -> Dict[str, Any]:
         """
@@ -104,6 +106,8 @@ class FuturesDataSource(BaseDataSource):
         Crypto futures: native Binance public REST.
         """
         sym = (symbol or "").strip()
+        if is_cn_futures_symbol(sym):
+            return self._cn_futures.get_ticker(sym)
         is_traditional = sym in self.YF_SYMBOLS or sym.endswith("=F") or sym in _TD_FUTURES_SYMBOLS
         if is_traditional:
             for fetcher in (self._get_ticker_twelvedata, self._get_ticker_yfinance, self._get_ticker_tiingo):
@@ -230,6 +234,10 @@ class FuturesDataSource(BaseDataSource):
         """
         _ = after_time
         base_symbol = symbol.replace("=F", "").upper()
+        if is_cn_futures_symbol(base_symbol):
+            return self._cn_futures.get_kline(
+                base_symbol, timeframe, limit, before_time, after_time
+            )
         if base_symbol in _TD_FUTURES_SYMBOLS or symbol.endswith('=F'):
             return self._get_traditional_futures(symbol, timeframe, limit, before_time)
         else:
