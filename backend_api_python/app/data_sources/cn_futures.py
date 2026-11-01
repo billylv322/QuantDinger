@@ -74,7 +74,11 @@ def is_cn_futures_symbol(symbol: str) -> bool:
 
 
 def _ts_from_date(text: str) -> int:
-    dt = datetime.strptime(str(text)[:10], "%Y-%m-%d").replace(tzinfo=CN_TZ)
+    # Anchor daily bars at the 09:00 Asia/Shanghai day-session open, matching
+    # the platform convention for other markets (e.g. US daily bars are
+    # anchored at 09:30 ET). A local-midnight anchor falls on the previous
+    # UTC date and the chart labels the bar one day early.
+    dt = datetime.strptime(str(text)[:10], "%Y-%m-%d").replace(hour=9, tzinfo=CN_TZ)
     return int(dt.timestamp())
 
 
